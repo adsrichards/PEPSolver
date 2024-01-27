@@ -23,7 +23,7 @@ private:
 	const torch::Tensor sx = torch::tensor({ {0.0, 1.0}, {1.0, 0.0} });
 	const torch::Tensor sy = torch::tensor({ {0.0,-1.0}, {1.0, 0.0} });
 	const torch::Tensor sz = torch::tensor({ {1.0, 0.0}, {0.0,-1.0} });
-	const torch::Tensor i2 = torch::tensor({ {1.0, 0.0}, {1.0, 0.0} });
+	const torch::Tensor i2 = torch::tensor({ {1.0, 0.0}, {0.0, 1.0} });
 
 	std::tuple<double, double, double> h;
 	double J;
