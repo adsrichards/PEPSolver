@@ -6,14 +6,11 @@
 
 Ipeps::Ipeps(int pDim, int bDim, int cDim, int rSteps) : pDim(pDim), bDim(bDim), cDim(cDim), rSteps(rSteps){
 	aT = torch::rand({ pDim, bDim, bDim, bDim, bDim });
-	aT = aT / torch::norm(aT).item<double>();
+	aT = aT / tNorm(aT);
+	aT = register_parameter("A", aT);
 }
 
 Ipeps::~Ipeps() {}
-
-inline double tNorm(torch::Tensor tT) {
-	return torch::norm(tT).item<double>();
-}
 
 double Ipeps::forward() {
 	symmetrize(aT);
@@ -32,15 +29,11 @@ double Ipeps::forward() {
 }
 
 void Ipeps::ctmrg(torch::Tensor& tT) {
-	torch::Tensor cT = tT.sum(c10::IntArrayRef({ 0, 1 }));
-	torch::Tensor eT = tT.sum(c10::IntArrayRef({ 1 }));
-
+	cT = tT.sum(c10::IntArrayRef({ 0, 1 }));
+	eT = tT.sum(c10::IntArrayRef({ 1 }));
 	eT = eT.permute({ 0, 2, 1 });
 
-	renormalize(tT, cT, eT);
-
 	for (int i = 0; i < rSteps; i++) {
-		eT = eT / tNorm(eT);
 		renormalize(tT, cT, eT);
 	}
 }
@@ -84,4 +77,5 @@ void Ipeps::renormalizeEdge(torch::Tensor& eT, torch::Tensor& tT, torch::Tensor&
 	eT = torch::tensordot(eT, tT, { 0, 2 }, { 1, 0 });
 	eT = torch::tensordot(eT, pT, { 0, 2 }, { 0, 1 });
 	eT = (eT + eT.permute({ 2, 1, 0 }));
+	eT = eT / tNorm(eT);
 }
