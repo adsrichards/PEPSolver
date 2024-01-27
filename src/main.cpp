@@ -9,5 +9,12 @@ void printRandTensor() {
 }
 
 int main() {
-	Ipeps T(1,2,3,4);
+	int pDim = 2;
+	int bDim = 2;
+	int cDim = 8;
+	int rSteps = 10;
+
+	Ipeps tT(pDim, bDim, cDim, rSteps);
+
+	double x = tT.forward();
 }
