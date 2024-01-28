@@ -82,11 +82,11 @@ torch::Tensor Ipeps::forward() {
 }
 
 void Ipeps::optimize() {
-	torch::optim::LBFGS optimizer((*this).parameters());
+	torch::optim::LBFGS optimizer(this->parameters());
 	
 	auto closure = [&]() -> torch::Tensor {
 		optimizer.zero_grad();
-		auto loss = (*this).forward();
+		auto loss = this->forward();
 		loss.backward();
 		return loss;
 	};
