@@ -9,8 +9,9 @@
 int main() {
 	int pDim = 2;
 	int bDim = 2;
-	int cDim = 8;
-	int rSteps = 10;
+	int cDim = 16;
+	int rSteps = 1;
+	int eSteps = 10;
 
 	std::string model_list;
 	std::string model_name = "ising";
@@ -19,9 +20,8 @@ int main() {
 
 	Model model = { model_name, J, h };
 
-	Ipeps ipeps(pDim, bDim, cDim, rSteps, model);
-	ipeps.optimize();
+	torch::autograd::GradMode::set_enabled(true);
 
-	Measurement m(ipeps.aT, ipeps.eT, ipeps.cT, model);
-	auto measurements = m.measure();
+	Ipeps ipeps(pDim, bDim, cDim, rSteps, eSteps, model);
+	ipeps.optimize();
 }

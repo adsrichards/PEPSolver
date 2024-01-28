@@ -12,7 +12,7 @@ void Measurement::buildHam(Model model) {
 	}
 }
 
-std::unordered_map<std::string, double> Measurement::measure() {
+torch::Tensor Measurement::measure() {
 	torch::Tensor tdT = torch::einsum("mefgh,nabcd->eafbgchdmn", { aT, aT });
 	tdT = tdT.contiguous().view({ aT.size(1) * aT.size(1), aT.size(2) * aT.size(2), aT.size(3) * aT.size(3), aT.size(4) * aT.size(4), aT.size(0), aT.size(0) });
 
@@ -35,5 +35,10 @@ std::unordered_map<std::string, double> Measurement::measure() {
 	measurements["my"] = torch::mm(rT, torch::kron(sy, i2)).trace().item<double>() / nT;
 	measurements["mz"] = torch::mm(rT, torch::kron(sz, i2)).trace().item<double>() / nT;
 
-	return measurements;
+	std::cout << "Mx measured: Mx = " << measurements["mx"] << std::endl;
+	std::cout << "My measured: My = " << measurements["my"] << std::endl;
+	std::cout << "Mz measured: Mz = " << measurements["mz"] << std::endl;
+	std::cout << "Energy measured: Energy = " << measurements["energy"] << std::endl;
+
+	return torch::mm(rT, ham).trace() / rT.trace();
 }

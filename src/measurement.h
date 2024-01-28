@@ -9,7 +9,7 @@ class Measurement
 {
 public:
 	Measurement(torch::Tensor& aT, torch::Tensor& eT, torch::Tensor& cT, Model model);
-	std::unordered_map<std::string, double> Measurement::measure();
+	torch::Tensor measure();
 
 	void buildHam(Model model);
 

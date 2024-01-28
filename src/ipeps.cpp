@@ -5,10 +5,21 @@
 #include "measurement.h"
 #include "utils.h"
 
-Ipeps::Ipeps(int pDim, int bDim, int cDim, int rSteps, Model model) : pDim(pDim), bDim(bDim), cDim(cDim), rSteps(rSteps), model(model){
-	aT = torch::rand({ pDim, bDim, bDim, bDim, bDim });
+Ipeps::Ipeps(int pDim, int bDim, int cDim, int rSteps, int eSteps, Model model) : 
+	Measurement(aT, eT, cT, model), pDim(pDim), bDim(bDim), cDim(cDim), rSteps(rSteps), eSteps(eSteps), model(model){
+	//aT = torch::rand({ pDim, bDim, bDim, bDim, bDim });
+
+	aT = torch::ones({ pDim, bDim, bDim, bDim, bDim });
+	aT.index_put_({ 0, 0, 0, 0, 0 }, aT.index({ 0, 0, 0, 0, 0 }) + 0.1);
+
 	aT = aT / tNorm(aT);
 	aT = register_parameter("A", aT);
+
+	for (auto& param : this->parameters()) {
+		param.set_requires_grad(true);
+	}
+
+	buildHam(model);
 }
 
 Ipeps::~Ipeps() {}
@@ -19,23 +30,23 @@ void Ipeps::ctmrg(torch::Tensor& tT) {
 	eT = eT.permute({ 0, 2, 1 });
 
 	for (int i = 0; i < rSteps; i++) {
-		renormalize(tT, cT, eT);
+		renormalize(tT);
 	}
 }
 
-void Ipeps::renormalize(torch::Tensor& tT, torch::Tensor& cT, torch::Tensor& eT) {
-	torch::Tensor rT = rho(tT, cT, eT);
+void Ipeps::renormalize(torch::Tensor& tT) {
+	torch::Tensor rT = rho(tT);
 	torch::Tensor pT = std::get<0>(torch::svd(rT));
 	const int cDimNew = std::min((int)(eT.size(0) * tT.size(0)), cDim);
 
 	pT = pT.narrow(1, 0, cDimNew);
-	renormalizeCorner(cT, rT, pT);
+	renormalizeCorner(rT, pT);
 
 	pT = pT.view({ eT.size(0), tT.size(0), cDimNew });
-	renormalizeEdge(eT, tT, pT);
+	renormalizeEdge(tT, pT);
 }
 
-torch::Tensor Ipeps::rho(torch::Tensor& tT, torch::Tensor& cT, torch::Tensor& eT) {
+torch::Tensor Ipeps::rho(torch::Tensor& tT) {
 	torch::Tensor rT = torch::tensordot(cT, eT, { 1 }, { 0 });
 	rT = torch::tensordot(rT, eT, { 0 }, { 0 });
 	rT = torch::tensordot(rT, tT, { 0, 2 }, { 0, 1 });
@@ -48,14 +59,14 @@ torch::Tensor Ipeps::rho(torch::Tensor& tT, torch::Tensor& cT, torch::Tensor& eT
 	return rT;
 }
 
-void Ipeps::renormalizeCorner(torch::Tensor& cT, torch::Tensor& rT, torch::Tensor& pT) {
+void Ipeps::renormalizeCorner(torch::Tensor& rT, torch::Tensor& pT) {
 	cT = torch::mm(rT, pT);
 	cT = torch::mm(pT.t(), cT);
 	cT = (cT + cT.t());
 	cT = cT / tNorm(cT);
 }
 
-void Ipeps::renormalizeEdge(torch::Tensor& eT, torch::Tensor& tT, torch::Tensor& pT) {
+void Ipeps::renormalizeEdge(torch::Tensor& tT, torch::Tensor& pT) {
 	eT = torch::tensordot(eT, pT, { 0 }, { 0 });
 	eT = torch::tensordot(eT, tT, { 0, 2 }, { 1, 0 });
 	eT = torch::tensordot(eT, pT, { 0, 2 }, { 0, 1 });
@@ -64,9 +75,9 @@ void Ipeps::renormalizeEdge(torch::Tensor& eT, torch::Tensor& tT, torch::Tensor&
 }
 
 torch::Tensor Ipeps::forward() {
-	symmetrize(aT);
+	torch::Tensor bT = symmetrize(aT);
 
-	torch::Tensor tT = torch::mm(aT.view({ pDim, -1 }).t(), aT.view({ pDim, -1 }));
+	torch::Tensor tT = torch::mm(bT.view({ pDim, -1 }).t(), bT.view({ pDim, -1 }));
 	tT = tT.contiguous().view({ bDim, bDim, bDim, bDim, bDim, bDim, bDim, bDim });
 
 	tT = tT.permute({ 0, 4, 1, 5, 2, 6, 3, 7 });
@@ -75,21 +86,25 @@ torch::Tensor Ipeps::forward() {
 	tT = tT / tNorm(tT);
 
 	ctmrg(tT);
-	Measurement m(aT, eT, cT, model);
-	torch::Tensor loss = torch::tensor(m.measure()["energy"]);
 
-	return loss;
+	return measure();
 }
 
 void Ipeps::optimize() {
-	torch::optim::LBFGS optimizer(this->parameters());
-	
+	torch::optim::LBFGS optimizer(parameters(), torch::optim::LBFGSOptions().max_iter(1));
+
 	auto closure = [&]() -> torch::Tensor {
 		optimizer.zero_grad();
-		auto loss = this->forward();
+		auto loss = forward();
 		loss.backward();
 		return loss;
-	};
+		};
 
-	auto loss = optimizer.step(closure);
+	for (int i = 0; i < eSteps; i++) {
+		auto loss = optimizer.step(closure);
+
+		for (auto& param : parameters()) {
+			std::cout << "Loss: " << loss.item<double>() << ", Gradient norm: " << std::fixed << std::setprecision(12) << torch::norm(param.grad()).item<double>() << std::endl;
+		}
+	}
 }
