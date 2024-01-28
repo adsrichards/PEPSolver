@@ -28,10 +28,12 @@ std::unordered_map<std::string, double> Measurement::measure() {
 	rT = (rT + rT.t()) / 2.0;
 	double nT = rT.trace().item<double>();
 
-	double energy = 0.0;
-
 	std::unordered_map<std::string, double> measurements;
 
-	measurements["energy"] = energy;
+	measurements["energy"] = torch::mm(rT, ham).trace().item<double>() / nT;
+	measurements["mx"] = torch::mm(rT, torch::kron(sx, i2)).trace().item<double>() / nT;
+	measurements["my"] = torch::mm(rT, torch::kron(sy, i2)).trace().item<double>() / nT;
+	measurements["mz"] = torch::mm(rT, torch::kron(sz, i2)).trace().item<double>() / nT;
+
 	return measurements;
 }

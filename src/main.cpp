@@ -9,7 +9,7 @@
 int main() {
 	int pDim = 2;
 	int bDim = 2;
-	int cDim = 32;
+	int cDim = 8;
 	int rSteps = 10;
 
 	std::string model_list;
@@ -19,8 +19,8 @@ int main() {
 
 	Model model = { model_name, J, h };
 
-	Ipeps ipeps(pDim, bDim, cDim, rSteps);
-	double x = ipeps.forward();
+	Ipeps ipeps(pDim, bDim, cDim, rSteps, model);
+	ipeps.optimize();
 
 	Measurement m(ipeps.aT, ipeps.eT, ipeps.cT, model);
 	auto measurements = m.measure();

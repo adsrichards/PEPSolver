@@ -2,31 +2,16 @@
 #include <algorithm>
 
 #include "ipeps.h"
+#include "measurement.h"
 #include "utils.h"
 
-Ipeps::Ipeps(int pDim, int bDim, int cDim, int rSteps) : pDim(pDim), bDim(bDim), cDim(cDim), rSteps(rSteps){
+Ipeps::Ipeps(int pDim, int bDim, int cDim, int rSteps, Model model) : pDim(pDim), bDim(bDim), cDim(cDim), rSteps(rSteps), model(model){
 	aT = torch::rand({ pDim, bDim, bDim, bDim, bDim });
 	aT = aT / tNorm(aT);
 	aT = register_parameter("A", aT);
 }
 
 Ipeps::~Ipeps() {}
-
-double Ipeps::forward() {
-	symmetrize(aT);
-
-	torch::Tensor tT = torch::mm(aT.view({ pDim, -1 }).t(), aT.view({ pDim, -1 }));
-	tT = tT.contiguous().view({ bDim, bDim, bDim, bDim, bDim, bDim, bDim, bDim });
-
-	tT = tT.permute({ 0, 4, 1, 5, 2, 6, 3, 7 });
-	tT = tT.contiguous().view({ bDim * bDim, bDim * bDim, bDim * bDim, bDim * bDim });
-	
-	tT = tT / tNorm(tT);
-
-	ctmrg(tT);
-
-	return 0.0;
-}
 
 void Ipeps::ctmrg(torch::Tensor& tT) {
 	cT = tT.sum(c10::IntArrayRef({ 0, 1 }));
@@ -42,8 +27,6 @@ void Ipeps::renormalize(torch::Tensor& tT, torch::Tensor& cT, torch::Tensor& eT)
 	torch::Tensor rT = rho(tT, cT, eT);
 	torch::Tensor pT = std::get<0>(torch::svd(rT));
 	const int cDimNew = std::min((int)(eT.size(0) * tT.size(0)), cDim);
-
-	std::cout << cDimNew << std::endl;
 
 	pT = pT.narrow(1, 0, cDimNew);
 	renormalizeCorner(cT, rT, pT);
@@ -78,4 +61,35 @@ void Ipeps::renormalizeEdge(torch::Tensor& eT, torch::Tensor& tT, torch::Tensor&
 	eT = torch::tensordot(eT, pT, { 0, 2 }, { 0, 1 });
 	eT = (eT + eT.permute({ 2, 1, 0 }));
 	eT = eT / tNorm(eT);
+}
+
+torch::Tensor Ipeps::forward() {
+	symmetrize(aT);
+
+	torch::Tensor tT = torch::mm(aT.view({ pDim, -1 }).t(), aT.view({ pDim, -1 }));
+	tT = tT.contiguous().view({ bDim, bDim, bDim, bDim, bDim, bDim, bDim, bDim });
+
+	tT = tT.permute({ 0, 4, 1, 5, 2, 6, 3, 7 });
+	tT = tT.contiguous().view({ bDim * bDim, bDim * bDim, bDim * bDim, bDim * bDim });
+
+	tT = tT / tNorm(tT);
+
+	ctmrg(tT);
+	Measurement m(aT, eT, cT, model);
+	torch::Tensor loss = torch::tensor(m.measure()["energy"]);
+
+	return loss;
+}
+
+void Ipeps::optimize() {
+	torch::optim::LBFGS optimizer((*this).parameters());
+	
+	auto closure = [&]() -> torch::Tensor {
+		optimizer.zero_grad();
+		auto loss = (*this).forward();
+		loss.backward();
+		return loss;
+	};
+
+	auto loss = optimizer.step(closure);
 }
