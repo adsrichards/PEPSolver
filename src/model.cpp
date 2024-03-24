@@ -1,5 +1,6 @@
 #include "model.h"
 #include <assert.h>
+#include <algorithm>
 
 std::string model_list[] = {
 	"ising",
