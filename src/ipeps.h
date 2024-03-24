@@ -13,7 +13,7 @@ public:
 	torch::Tensor cT;
 	torch::Tensor eT;
 
-	void Ipeps::optimize();
+	void optimize();
 private:
 	int pDim;
 	int bDim;
@@ -27,8 +27,8 @@ private:
 	void ctmrg(torch::Tensor& aT);
 	void renormalize(torch::Tensor& tT);
 	torch::Tensor rho(torch::Tensor& tT);
-	void Ipeps::renormalizeEdge(torch::Tensor& tT, torch::Tensor& pT);
-	void Ipeps::renormalizeCorner(torch::Tensor& rT, torch::Tensor& pT);
+	void renormalizeEdge(torch::Tensor& tT, torch::Tensor& pT);
+	void renormalizeCorner(torch::Tensor& rT, torch::Tensor& pT);
 
 	torch::Tensor forward();
 };
