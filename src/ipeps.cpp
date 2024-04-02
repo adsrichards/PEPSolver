@@ -98,7 +98,7 @@ void Ipeps::optimize() {
 		auto loss = forward();
 		loss.backward();
 		return loss;
-		};
+	};
 
 	for (int i = 1; i <= eSteps; i++) {
 		std::cout << '\n' << "Starting iteration " << i << std::endl;
