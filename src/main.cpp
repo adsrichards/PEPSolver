@@ -13,7 +13,6 @@ int main() {
 	int rSteps = 1;
 	int eSteps = 10;
 
-	std::string model_list;
 	std::string model_name = "ising";
 	double J = 1.0;
 	std::tuple<double, double, double> h = { 1.0, 0.0, 0.0 };

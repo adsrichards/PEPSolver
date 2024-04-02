@@ -91,7 +91,7 @@ torch::Tensor Ipeps::forward() {
 }
 
 void Ipeps::optimize() {
-	torch::optim::LBFGS optimizer(parameters(), torch::optim::LBFGSOptions().max_iter(1));
+	torch::optim::LBFGS optimizer(parameters(), torch::optim::LBFGSOptions().max_iter(10));
 
 	auto closure = [&]() -> torch::Tensor {
 		optimizer.zero_grad();
@@ -100,11 +100,16 @@ void Ipeps::optimize() {
 		return loss;
 		};
 
-	for (int i = 0; i < eSteps; i++) {
+	for (int i = 1; i <= eSteps; i++) {
+		std::cout << '\n' << "Starting iteration " << i << std::endl;
 		auto loss = optimizer.step(closure);
 
-		for (auto& param : parameters()) {
-			std::cout << "Loss: " << loss.item<double>() << ", Gradient norm: " << std::fixed << std::setprecision(12) << torch::norm(param.grad()).item<double>() << std::endl;
-		}
+		std::cout << "Completed gradient step" << std::endl;
+		std::cout << std::fixed << std::setprecision(12) 
+			      << "Loss: " << loss.item<double>() << ", "
+		          << "Gradient norm: " << torch::norm(parameters()[0].grad()).item<double>() 
+			      << std::endl;
+
+		print_measurements();
 	}
 }

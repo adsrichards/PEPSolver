@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "measurement.h"
 
 Measurement::Measurement(torch::Tensor& aT, torch::Tensor& eT, torch::Tensor& cT, Model model) : aT(aT), eT(eT), cT(cT), model(model){
@@ -10,6 +11,22 @@ void Measurement::buildHam(Model model) {
 		double Jz = model.J;
 		ham = -2.0 * Jz * torch::kron(sz, sz) - hx * (torch::kron(sx, i2) + torch::kron(i2, sx)) / 2.0;
 	}
+}
+
+void Measurement::print_measurements() {
+	assert(
+		measurements.find("energy") != measurements.end() &&
+		measurements.find("mx")		!= measurements.end() &&
+		measurements.find("my")		!= measurements.end() &&
+		measurements.find("mz")		!= measurements.end()
+	);
+	
+	std::cout << "E, mx, my, mz = " 
+		<< measurements["energy"] << ' '
+		<< measurements["mx"] << ' '
+		<< measurements["my"] << ' '
+		<< measurements["mz"] << ' '
+		<< std::endl;
 }
 
 torch::Tensor Measurement::measure() {
@@ -28,17 +45,10 @@ torch::Tensor Measurement::measure() {
 	rT = (rT + rT.t()) / 2.0;
 	double nT = rT.trace().item<double>();
 
-	std::unordered_map<std::string, double> measurements;
-
 	measurements["energy"] = torch::mm(rT, ham).trace().item<double>() / nT;
 	measurements["mx"] = torch::mm(rT, torch::kron(sx, i2)).trace().item<double>() / nT;
 	measurements["my"] = torch::mm(rT, torch::kron(sy, i2)).trace().item<double>() / nT;
 	measurements["mz"] = torch::mm(rT, torch::kron(sz, i2)).trace().item<double>() / nT;
-
-	std::cout << "Mx measured: Mx = " << measurements["mx"] << std::endl;
-	std::cout << "My measured: My = " << measurements["my"] << std::endl;
-	std::cout << "Mz measured: Mz = " << measurements["mz"] << std::endl;
-	std::cout << "Energy measured: Energy = " << measurements["energy"] << std::endl;
 
 	return torch::mm(rT, ham).trace() / rT.trace();
 }

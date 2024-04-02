@@ -12,8 +12,11 @@ public:
 	torch::Tensor measure();
 
 	void buildHam(Model model);
+	void print_measurements();
 
 private:
+	std::unordered_map<std::string, double> measurements;
+
 	torch::Tensor& aT;
 	torch::Tensor& eT;
 	torch::Tensor& cT;
