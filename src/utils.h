@@ -1,5 +1,5 @@
 #pragma once
 #include <torch/torch.h>
 
-double tNorm(torch::Tensor tT);
-torch::Tensor symmetrize(torch::Tensor tT);
+double ten_norm(torch::Tensor tT);
+torch::Tensor symmetrize_aTen(torch::Tensor tT);

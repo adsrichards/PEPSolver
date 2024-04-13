@@ -46,16 +46,20 @@ torch::Tensor Measurement::measure() {
 
 	// Calculate measurements with density matrix rT
 	torch::Tensor energy = torch::mm(rT, ham).trace();
+	
+	double mx = torch::mm(rT, torch::kron(sx, i2)).trace().item<double>();
+	double my = torch::mm(rT, torch::kron(sy, i2)).trace().item<double>();
+	double mz = torch::mm(rT, torch::kron(sz, i2)).trace().item<double>();
 
 	for (std::string m : measurement_list) {
 		if (m == "E")
 			measurements[m] = energy.item<double>();
-		else if (m == "mx") 
-			measurements[m] = torch::mm(rT, torch::kron(sx, i2)).trace().item<double>();
-		else if (m == "my") 
-			measurements[m] = torch::mm(rT, torch::kron(sy, i2)).trace().item<double>();
-		else if (m == "mz") 
-			measurements[m] = torch::mm(rT, torch::kron(sz, i2)).trace().item<double>();
+		else if (m == "mx")
+			measurements[m] = mx;
+		else if (m == "my")
+			measurements[m] = my;
+		else if (m == "mz")
+			measurements[m] = mz;
 		else {
 			std::cout << "Measurement of " << m << " has not been implemented!" << std::endl;
 			assert(false);

@@ -15,7 +15,8 @@ public:
 	void print_measurements();
 
 private:
-	const std::string measurement_list[4] = {"E", "mx", "my", "mz"};
+	static const int num_measurements = 4;
+	const std::string measurement_list[num_measurements] = {"E", "mx", "my", "mz"};
 	std::unordered_map<std::string, double> measurements;
 
 	torch::Tensor& aT;
